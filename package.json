@@ -16,19 +16,9 @@
   "build": {
     "appId": "com.panelhaus.dayofthesmudgies",
     "productName": "Day of the Smudgies",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "game/**/*",
-      "build/icon.png"
-    ],
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "game/**/*", "build/icon.png"],
     "asar": true,
-    "win": {
-      "target": "dir",
-      "icon": "build/icon.png"
-    }
+    "win": { "target": "dir", "icon": "build/icon.png" }
   }
 }
