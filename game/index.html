@@ -116,7 +116,8 @@ const SONGS={
   trk('bass',.36,'G2 . B2 . D3 . B2 . | A2 . C3 . D3 . F#2 . | G2 . D3 . G2 . B2 . | C3 . E3 . G2 . E3 . | C3 . G2 . C3 . E3 . | G2 . D3 . E2 . B2 . | A2 . E3 . D3 . F#3 . | G2 . D3 . G2 . . . | E2 . B2 . E2 . B2 . | B1 . F#2 . B1 . D#2 . | E2 . B2 . E2 . G2 . | B1 . D#2 . F#2 . B1 . | C2 . G2 . C2 . E2 . | D2 . A2 . D2 . F#2 . | A2 . C3 . D3 . F#2 . | D2 . . . D2 C2 B1 A1'),
   trk(null,.3,'k r s r k r s r',1)])};
 function tick(){const ac=AU.ac;if(!ac||!AU.song)return;const S2=AU.song,sd=60/S2.bpm/2;if(AU.next<ac.currentTime-.2)AU.next=ac.currentTime+.05;
- while(AU.next<ac.currentTime+.15){const stp=AU.step;for(const tr of S2.tracks){const e=tr.ev[stp%tr.len];if(!e)continue;const t=AU.next+((stp%2)?S2.swing*sd:0);for(const n of e){if(tr.drum){for(const ch of n.d)if(DR[ch])DR[ch](t,tr.vol,AU.g);}else for(const f of n.f)INST[tr.inst](f,t,n.len*sd,tr.vol,AU.g);}}
+ /* schedule half a second ahead so a main-thread hitch (pack loads, GC, shot painting) doesn't become a gap in the score */
+ while(AU.next<ac.currentTime+.5){const stp=AU.step;for(const tr of S2.tracks){const e=tr.ev[stp%tr.len];if(!e)continue;const t=AU.next+((stp%2)?S2.swing*sd:0);for(const n of e){if(tr.drum){for(const ch of n.d)if(DR[ch])DR[ch](t,tr.vol,AU.g);}else for(const f of n.f)INST[tr.inst](f,t,n.len*sd,tr.vol,AU.g);}}
   AU.next+=sd;AU.step++;}}
 function music(id){if(!AU.ac){AU.pending=id;return;}if(AU.cur===id)return;const ac=AU.ac,t=ac.currentTime;
  if(AU.g){const og=AU.g;og.gain.cancelScheduledValues(t);og.gain.setValueAtTime(og.gain.value,t);og.gain.linearRampToValueAtTime(.0001,t+.5);setTimeout(()=>og.disconnect(),1200);}
@@ -1510,6 +1511,7 @@ function update(dt){NOW+=dt;
  for(const t of tweens.slice()){t.t+=dt;const p=Math.min(1,t.t/t.ms);t.o[t.k]=t.from+(t.to-t.from)*p;if(p>=1){tweens.splice(tweens.indexOf(t),1);t.res();}}
  for(const w of waits.slice()){w.t-=dt;if(w.t<=0){waits.splice(waits.indexOf(w),1);w.res();}}
  if(speech){speech.t-=dt;if(speech.t<=0)endSpeech();}
+ if(st.mode==='play'&&!VOL.go)voLoadRest();
  for(const a of Object.values(ACT))moveActor(a,dt);
  if(st.room&&!st.screen)updCam(dt,false);
  if(st.screen==='gutters')st.gt=(st.gt||0)+dt;
@@ -1596,14 +1598,15 @@ const bVox=$('bVox');function syncVox(){bVox.setAttribute('aria-pressed',String(
 bVox.addEventListener('click',()=>{VOX.on=!VOX.on;if(!VOX.on)stopVO();try{const p=JSON.parse(localStorage.getItem('dots-audio')||'{}');p.v=VOX.on;localStorage.setItem('dots-audio',JSON.stringify(p));}catch(e){}syncVox();});syncVox();
 
 /* voice packs load in the background; the game runs silent until they arrive */
-/* vo0.js holds every line of the opening scenes and loads first; the rest follow once it lands (or after 2s) */
-const VOL={total:0,done:0};
-function loadVoicePacks(){const L=(typeof VO_PACKS==='undefined'?[]:VO_PACKS);VOL.total=L.length;
- const add=n=>{const sc=document.createElement('script');sc.src=n;sc.async=true;sc.onload=sc.onerror=()=>{VOL.done++;};document.head.appendChild(sc);};
- const first=L.filter(n=>n==='vo0.js'),rest=L.filter(n=>n!=='vo0.js');
- if(!first.length){rest.forEach(add);return;}
- let go=false;const goRest=()=>{if(go)return;go=true;rest.forEach(add);};
- const sc=document.createElement('script');sc.src='vo0.js';sc.async=true;sc.onload=sc.onerror=()=>{VOL.done++;goRest();};document.head.appendChild(sc);setTimeout(goRest,2000);}
+/* vo0.js holds every line of the opening scenes and loads at boot. The other packs (~48 MB of script) stay out of the intro:
+   evaluating them stalls the main thread and the score drops out. They start once the player is in play mode (or a line
+   needs one), one pack at a time with idle gaps so the stalls never stack. */
+const VOL={total:0,done:0,vo0:false,rest:[],go:false};
+function loadVoicePacks(){const L=(typeof VO_PACKS==='undefined'?[]:VO_PACKS);VOL.total=L.length;VOL.rest=L.filter(n=>n!=='vo0.js');
+ if(!L.includes('vo0.js')){VOL.vo0=true;return;}
+ const sc=document.createElement('script');sc.src='vo0.js';sc.async=true;sc.onload=sc.onerror=()=>{VOL.done++;VOL.vo0=true;};document.head.appendChild(sc);}
+function voLoadRest(){if(VOL.go)return;VOL.go=true;const idle=fn=>window.requestIdleCallback?requestIdleCallback(fn,{timeout:1000}):setTimeout(fn,200);
+ const next=()=>{const n=VOL.rest.shift();if(!n)return;const sc=document.createElement('script');sc.src=n;sc.async=true;sc.onload=sc.onerror=()=>{VOL.done++;idle(next);};document.head.appendChild(sc);};next();}
 function voPending(){return VOL.done<VOL.total;}
 loadVoicePacks();
 
@@ -9912,7 +9915,7 @@ function cineOff(){if(st.screen==='phone'){st.screen=null;st.ph=null;}}
 /* never drop a line because its voice pack is still downloading: wait for the clip (up to 12s) */
 {const _say=say;say=function(a,text){if(!VOX.on||cut.skip||typeof voPending!=='function'||!voPending())return _say(a,text);
   const k=voKey(a,text);if((window.DOTS_VO||{})[k]||typeof VO_KEYS==='undefined'||!VO_KEYS.has(k))return _say(a,text);
-  return(async()=>{const t0=Date.now();st.voWait=true;while(!(window.DOTS_VO||{})[k]&&voPending()&&!cut.skip&&Date.now()-t0<12000)await new Promise(r=>setTimeout(r,120));st.voWait=false;return _say(a,text);})();};
+  return(async()=>{const t0=Date.now();st.voWait=true;while(!(window.DOTS_VO||{})[k]&&voPending()&&!cut.skip&&Date.now()-t0<12000){if(VOL.vo0)voLoadRest();await new Promise(r=>setTimeout(r,120));}st.voWait=false;return _say(a,text);})();};
  const _r=render;render=function(){_r();if(st.voWait){tx.setTransform(4,0,0,4,0,0);tx.textBaseline='top';font(6,600);plain('loading voices...',314,4,'#8a86a0','right');}};}
 /* ---- pre-warm: paint the cinematic shots ahead of time so nothing stalls when they play ----
    New game: during the opening character cards (static screens, so the work is invisible).
@@ -11062,6 +11065,6 @@ window.__dots.audit=async(plan)=>{window.__sayLog=[];const verbs=['look','pick',
    for(const o of objs)for(const v of verbs){try{st.mode='play';await Promise.race([runVerb(v,o),new Promise(r=>setTimeout(r,60))]);
      if(st.mode==='dialog'&&st.dlg){const rows=optRows();for(const row of rows){try{await Promise.race([(async()=>{if(!row.silent)await say(PL,row.t);if(row.f)await row.f();})(),new Promise(r=>setTimeout(r,60))]);}catch(e){}}st.mode='play';st.dlg=null;}}catch(e){}}
    for(const id of Object.keys(INV))for(const v of ['look','open','use','talk']){try{await Promise.race([runVerb(v,INV[id]),new Promise(r=>setTimeout(r,40))]);}catch(e){}}}}
- cut.skip=false;const have=window.DOTS_VO||{};const miss={};for(const e of window.__sayLog){const k=e.split('|')[0];if(!have[k])miss[e]=1;}return Object.keys(miss);};
+ cut.skip=false;voLoadRest();for(const t0=Date.now();voPending()&&Date.now()-t0<60000;)await new Promise(r=>setTimeout(r,100));const have=window.DOTS_VO||{};const miss={};for(const e of window.__sayLog){const k=e.split('|')[0];if(!have[k])miss[e]=1;}return Object.keys(miss);};
 })();
 </script>
