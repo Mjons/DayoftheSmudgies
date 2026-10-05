@@ -32,3 +32,16 @@ Steam Cloud, turn on Auto-Cloud in Steamworks with root WinAppDataRoaming and
 subdirectory "Day of the Smudgies/Local Storage", pattern *.
 
 Font: Pixelify Sans, SIL Open Font License (game\fonts\OFL.txt).
+
+ARCADE EASTER EGG (Rory's Employee Lounge)
+   The two arcade games play inside the game from game\arcade\. After editing either
+   original (Smudge Boss Blitz.html / smudge-in-sudsland.html in the folder above), run:
+       node tools/sync-arcade.js
+   It copies them in, swaps Google Fonts for the bundled ones (game\fonts), and adds
+   the hold-Esc-to-walk-away bridge. The lounge code lives in tools\patches\arcade.js;
+   after changing it, run:  node tools/patches/apply-arcade.js
+   Arcade fonts: Press Start 2P and VT323, SIL Open Font License (game\fonts\OFL-*.txt).   Other patches in tools\patches (UI portraits from the cinematic busts, Cornelius's
+   HUMANS2 rig): edit portraits.js / cornelius.js, then run
+       node tools/patches/apply-patch.js portraits cornelius
+   Story-fix voice lines live in tools\voice\extra_lines.json; record new or changed
+   lines with:  node tools/voice/arcade_vo.js   (only new text costs credits)
