@@ -45,3 +45,9 @@ ARCADE EASTER EGG (Rory's Employee Lounge)
        node tools/patches/apply-patch.js portraits cornelius
    Story-fix voice lines live in tools\voice\extra_lines.json; record new or changed
    lines with:  node tools/voice/arcade_vo.js   (only new text costs credits)
+END CREDITS PAYOFF (Verny's Cut)
+   After the credits reach THE END, clicking plays game\vernys-cut.mp4 full screen
+   (Esc or Skip skips), then the "next morning" epilogue follows. To swap the video,
+   remux a new file over it so it starts streaming instantly (no re-encode):
+       ffmpeg -i new-video.mp4 -c copy -movflags +faststart game\vernys-cut.mp4
+   The code is tools\patches\endvideo.js (apply with: node tools/patches/apply-patch.js endvideo).

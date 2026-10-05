@@ -19,6 +19,7 @@
     "directories": { "output": "dist" },
     "files": ["main.js", "preload.js", "game/**/*", "build/icon.png"],
     "asar": true,
+    "asarUnpack": ["game/*.mp4"],
     "win": { "target": "dir", "icon": "build/icon.png" }
   }
 }

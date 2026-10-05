@@ -139,13 +139,17 @@ async function newsReturn(){const a=ARCS();
  if(a.tok)return say(PL,"The coin return's empty. I checked. Twice. Old habit.");
  a.tok=true;giveToken(347,96);
  await say(PL,"Something's jammed in the coin return. Not a quarter... a token. 'TUMBLE'S FUN ZONE. GOOD FOR ONE GAME.'");
- await say(PL,a.open?"Somebody tried to buy a newspaper with an arcade token. The box said no.":"Somebody tried to buy a newspaper with an arcade token. ...Tumble's has a FUN ZONE?");}
+ await say(PL,a.open?"Somebody tried to buy a newspaper with an arcade token. The box said no.":"Somebody tried to buy a newspaper with an arcade token. ...Tumble's has a FUN ZONE?");
+ await allTokens();}
 /* four tokens in all: the newspaper box, plus three Rory stashed in the lounge (couch, score board, fridge) */
 function tokN(){const a=ARCS();if(a.tk===undefined)a.tk=Object.values(ACT).some(x=>x.inv&&x.inv.includes('token'))?1:0;return a.tk;}
 function giveToken(x,y){const a=ARCS();a.tk=tokN()+1;addInv('token');snd('clink');sfx('CLINK.',x,y,'#c8d0e0',1);}
 function spendToken(){const a=ARCS();a.tk=Math.max(0,tokN()-1);if(!a.tk)for(const x of Object.values(ACT))if(x.inv){const i=x.inv.indexOf('token');if(i>=0)x.inv.splice(i,1);}}
 const LOUNGE_TOK=['couch','board','fridge'];const tokLeft=()=>LOUNGE_TOK.filter(k=>!ARCS()['tk_'+k]).length;
-async function stashToken(k,x,y,line){const a=ARCS();if(a['tk_'+k])return false;a['tk_'+k]=true;giveToken(x,y);await say(PL,line);return true;}
+async function stashToken(k,x,y,line){const a=ARCS();if(a['tk_'+k])return false;a['tk_'+k]=true;giveToken(x,y);await say(PL,line);await allTokens();return true;}
+/* the fourth token, wherever it turns up: stop looking, and a nudge toward the free-play bump */
+async function allTokens(){const a=ARCS();if(!a.tok||tokLeft()||arcFree())return;
+ await say(PL,"That's four. Every token in the building. ...But nobody fills a whole high score board on four tokens. Rory knows a trick.");}
 INV.token={id:'token',kind:'inv',get name(){return tokN()>1?'arcade tokens ('+tokN()+')':'arcade token';},on:{look:"A brass token. 'TUMBLE'S FUN ZONE. GOOD FOR ONE GAME.' On the back, scratched in: 'NOT A QUARTER. STOP TRYING. -R'",use:"I need to use it WITH something. Something with a coin slot."}};
 {const _di=drawIcon;drawIcon=function(id,cx,cy){if(id==='token'){disc(cx,cy,6,'#8a6a20');disc(cx,cy,5,'#d8b048');disc(cx,cy,3,'#b08a2a');R(cx-2,cy-4,2,1,'#fff0b0');pxText('T',cx-1,cy-2,'#fff0b0');const n=tokN();if(n>1){R(cx+4,cy+2,6,7,'#000000');pxText(String(n),cx+5,cy+3,'#ffd23a');}return;}return _di(id,cx,cy);};}
 
