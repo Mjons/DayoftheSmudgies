@@ -8,7 +8,7 @@ const ARCG={found:false,free:false};
 try{Object.assign(ARCG,JSON.parse(localStorage.getItem('dots-arcade')||'{}'));}catch(e){}
 function arcGSave(){try{localStorage.setItem('dots-arcade',JSON.stringify(ARCG));}catch(e){}}
 const ARCS=()=>st.arc||(st.arc={});
-const arcFree=()=>!!ARCG.free;
+const arcFree=()=>!!ARCG.free||st.act===4;
 const ARSW={sw:1};
 const CAB={blitz:{x:104,name:'BLITZ',side:'#2e2a26',hi:'#46403a',art:['#F9C51F','#F26B1D'],mq:'#F9C51F',scr:'#5a8af0'},
  suds:{x:160,name:'SUDS',side:'#4a2e18',hi:'#6a4426',art:['#5af0ff','#ff8ad0'],mq:'#fc7c18',scr:'#ff8ad0'}};
@@ -71,6 +71,7 @@ function loungeDyn(){for(const k in CAB){const c=CAB[k],x=c.x;
   pxText(c.name,x+18-((c.name.length*4-1)>>1),32,fl?'#6a4a20':'#1a0e06');
   arcScreen(c,k);const on=arcFree()||((NOW/600|0)%2);R(x+13,82,2,5,on?(arcFree()?'#5af06a':'#ff8a1a'):'#4a2a10');R(x+21,82,2,5,on?(arcFree()?'#5af06a':'#ff8a1a'):'#4a2a10');}
  if(((NOW/90)|0)%61===0)R(121,11,8,5,'#2a1424');
+ if(st.act===4)for(const k in CAB){const x=CAB[k].x;ell(x+18,86,7,5,'#0a0814');ell(x+17,85,5,3,'#14122a');R(x+14,91,2,5,'#0a0814');R(x+21,90,1,6,'#0a0814');R(x+15,83,2,1,'#5c5ca0');R(x+16,82,1,1,'#dcdcff');}
  const a=ARCS(),gl=(x,y,ph)=>{const t=(NOW+ph)%2600;if(t<240){R(x,y,2,1,'#d8b048');if(t<120)R(x,y-1,1,1,'#fff0b0');}};
  if(!a.tk_couch)gl(247,97,0);if(!a.tk_board)gl(264,57,900);if(!a.tk_fridge)gl(312,101,1700);}
 
@@ -104,7 +105,7 @@ function arcEl(){if(ARC.el)return ARC.el;
  document.body.appendChild(el);ARC.el=el;return el;}
 function openArcade(g,from){if(ARC.open)return Promise.resolve();const el=arcEl(),gm=ARC_GAMES[g];
  ARC.open=true;ARC.g=g;ARC.from=from;ARC.toMenu=false;stopVO();if(AU.ac&&AU.ac.state==='running')AU.ac.suspend().catch(()=>{});
- if(from==='room'){ARC.prev=st.mode;st.mode='arcade';}
+ if(from==='room'){ARC.prev=st.mode;st.mode='arcade';ARCG.played=ARCG.played||{};if(!ARCG.played[g]){ARCG.played[g]=true;arcGSave();}}
  el.querySelector('.t').textContent=gm.t.toUpperCase();el.querySelector('.c').textContent=arcFree()?'FREE PLAY':'CREDIT 1';
  const fr=document.createElement('iframe');fr.src=gm.src;fr.title=gm.t;fr.setAttribute('allow','autoplay; gamepad; fullscreen; clipboard-write');
  fr.addEventListener('load',()=>{try{fr.contentWindow.focus();fr.contentWindow.postMessage({dotsArcade:'focus'},'*');}catch(e){}});
@@ -205,7 +206,15 @@ room('now.lounge',{bg:bgLounge,dyn:loungeDyn,music:'shop',walk:[44,300,108,138],
  {id:'couch',name:'couch',rect:[208,80,88,32],walk:{x:252,y:118,dir:-1},on:{look:"A couch with one cushion dented exactly into the shape of Rory.",use:async()=>{await say(PL,"I sit. The couch sighs, like it's been waiting for someone who isn't Rory.");await stashToken('couch',250,96,"Something's poking me. ...A token, wedged between the cushions.");},
   pick:async()=>{if(!await stashToken('couch',250,96,"I dig between the cushions. Crumbs, a pen cap... and a token!"))await say(PL,"It's a couch. I already searched it. It had crumbs.");}}},
  {id:'fridge',name:'mini fridge',rect:[296,74,20,29],walk:{x:296,y:114,dir:1},on:{look:"A mini fridge with a sticky note: 'RORY'S.'",open:()=>fridgeOpen(),use:()=>fridgeOpen(),pick:"It's plugged in. And it's Rory's. It says so."}}]});
-ROOMS['now.lounge'].enter=()=>{const a=ARCS();if(a.seen)return;a.seen=true;setTimeout(()=>{if(busy||speech||st.mode!=='play'||st.room!=='now.lounge')return;busy=true;say(PL,"Rory has a secret ARCADE. Two cabinets, a couch, and a neon sign about himself.").then(()=>{busy=false;});},80);};
+/* Act 4: the Blot has been eating everything, coin slots included. Free play from here on (the coin mechs are gone for good). */
+async function blotFreePlay(){snd('splat');sfx('SPLAT!',CAB.blitz.x+18,84,'#c8c8d8',1);sfx('SPLAT!',CAB.suds.x+18,84,'#c8c8d8',1);
+ await say(PL,"Wait. The coin doors are covered in ink. The Blot ate the coin slots.");
+ await say(PL,"Both screens just say FREE PLAY. ...Thanks, Blot.");toast('FREE PLAY. The arcade is in the menu now, too.');}
+ROOMS['now.lounge'].enter=()=>{const a=ARCS(),first=!a.seen,blot=st.act===4&&!ARCG.free;
+ if(!ARCG.found||blot){ARCG.found=true;if(blot)ARCG.free=true;arcGSave();}   /* being in here at all unlocks the menu Arcade */
+ if(!first&&!blot)return;a.seen=true;
+ setTimeout(async()=>{if(busy||speech||st.mode!=='play'||st.room!=='now.lounge')return;busy=true;
+  try{if(first)await say(PL,"Rory has a secret ARCADE. Two cabinets, a couch, and a neon sign about himself.");if(blot)await blotFreePlay();}finally{busy=false;}},80);};
 
 /* Close on the open doorway swings the comic wall back into place (Pull issue #1 opens it again) */
 async function shutLounge(){const a=ARCS();if(!a.ajar)return;snd('creak');await tween(ARSW,'sw',0,700);a.ajar=false;ARSW.sw=0;snd('kachunk');sfx('KA-CHUNK!',70,14,'#ffd23a',1);}
@@ -239,10 +248,16 @@ async function peepShow(){await say(PL,"No penny. ...Somebody jammed the coin sl
  R(x+8,y-3,6,3,'#8a6a20');R(x+9,y-4,4,2,'#c9a23a');R(x+10,y-4,1,1,'#fff0b0');R(x+21,y+4,2,1,'#8a6a20');R(x+22,y+4,1,4,'#8a6a20');R(x+21,y+8,3,1,'#c9a23a');};}
 
 /* ---------- menus: an Arcade page once the lounge is found ---------- */
-function arcadeRows(){const L=Object.entries(ARC_GAMES).map(([g,gm])=>({lab:gm.t,sub:arcFree()?'Free play':'Insert coin',dis:!arcFree(),why:"Still on coin-op. Somebody in the lounge knows a trick.",act:()=>openArcade(g,'menu')}));L.push({lab:'Back',act:back});return L;}
+const arcUnlocked=g=>arcFree()||!!(ARCG.played&&ARCG.played[g]);
+const arcUnlockN=()=>Object.keys(ARC_GAMES).filter(arcUnlocked).length;
+function arcadeRows(){const L=Object.entries(ARC_GAMES).map(([g,gm])=>({lab:gm.t,sub:arcFree()?'Free play':arcUnlocked(g)?'Unlocked':'Locked',dis:!arcUnlocked(g),why:'Play it once in the lounge, or finish the game, to unlock it here.',act:()=>openArcade(g,'menu')}));L.push({lab:'Back',act:back});return L;}
 {const _rows=rows;rows=function(){if(MENU.page==='arcade')return arcadeRows();const L=_rows();
- if(MENU.page==='main'&&MENU.from==='game'&&ARCG.found){const i=L.findIndex(r=>r.lab==='Settings');L.splice(i,0,{lab:'Arcade',sub:arcFree()?'Free play':'Coin-op. The lounge holds a secret.',act:()=>{MENU.page='arcade';MENU.msg='';}});}
+ if(MENU.page==='main'&&MENU.from==='game'&&ARCG.found){const i=L.findIndex(r=>r.lab==='Settings');L.splice(i,0,{lab:'Arcade',sub:arcFree()?'Free play':arcUnlockN()?arcUnlockN()+' of 2 unlocked':'Coin-op. The lounge holds a secret.',act:()=>{MENU.page='arcade';MENU.msg='';}});}
  return L;};}
 {const _tr=titleRows;titleRows=function(){const L=_tr();if(!ARCG.found)return L;const i=L.findIndex(r=>r.lab==='Settings');L.splice(i,0,{lab:'Arcade',act:()=>openMenu('arcade')});
  font(10,600);const tw=L.map(r=>tx.measureText(r.lab).width),pad=Math.max(4,Math.min(12,(312-tw.reduce((a,b)=>a+b,0))/L.length)),w=tw.map(v=>v+pad);const tot=w.reduce((a,b)=>a+b,0);let x=160-tot/2;L.forEach((r,j)=>{r.x=x;r.w=w[j];x+=w[j];});return L;};}
-setTimeout(()=>{if(window.__dots){window.__dots.arc=()=>({g:ARCG,s:ARCS(),open:ARC.open});window.__dots.arcOpen=(g)=>openArcade(g,'menu');window.__dots.arcClose=closeArcade;}},0);
+/* finishing the game: the menu Arcade opens with free play, found lounge or not */
+function arcUnlockAll(){if(ARCG.found&&ARCG.free)return;ARCG.found=ARCG.free=true;arcGSave();}
+try{if(THEATER.seen.has('finale4')||THEATER.seen.has('epilogue4'))arcUnlockAll();}catch(e){}
+{const _f=finale4;finale4=async function(...x){const r=await _f.apply(this,x);if(!THEATER.on)arcUnlockAll();return r;};}
+setTimeout(()=>{if(window.__dots){window.__dots.arc=()=>({g:ARCG,s:ARCS(),open:ARC.open});window.__dots.arcOpen=(g)=>openArcade(g,'menu');window.__dots.arcClose=closeArcade;window.__dots.finale4=()=>finale4();}},0);
