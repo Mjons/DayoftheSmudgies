@@ -77,7 +77,7 @@ function loungeDyn(){for(const k in CAB){const c=CAB[k],x=c.x;
 /* the comic wall in the shop: issue #1 sticks out; once pulled, a section swings in on the lounge */
 function loungeDoorDyn(){const a=ARCS();
  R(167,85,7,6,'#ffe24a');R(167,85,7,1,'#fff4a0');R(168,87,5,1,'#9a8a2a');R(168,89,3,1,'#9a8a2a');
- const sw=a.open?ARSW.sw:0;
+ const sw=a.ajar?ARSW.sw:0;
  if(sw<=0){R(43,23,7,10,'#d03a3a');R(43,23,7,2,'#f4f0e0');R(49,23,1,10,'#901a1a');pxText('1',45,26,'#ffd23a');return;}
  R(44,22,48,74,'#140c22');
  R(60,40,18,56,'#0a0810');R(62,41,14,3,'#F9C51F');R(62,46,14,10,((NOW/400)|0)%2?'#5af0ff':'#3ab0c0');R(80,48,12,48,'#0a0810');R(81,53,9,8,'#ff8ad0');
@@ -126,11 +126,12 @@ async function readSticky(){const a=ARCS();a.note=true;
  await say(PL,"A sticky note on the display case. 'LOUNGE. PULL ISSUE #1. BACK ISSUES WALL. -R'");
  if(!a.open)await say(PL,"A lounge? He's the only employee. Who's he lounging with?");}
 async function pullIssue(){const a=ARCS();
- if(a.open)return say(PL,"Issue number one. Best lever I've ever pulled.");
+ if(a.ajar)return say(PL,"Issue number one. Best lever I've ever pulled.");
+ if(a.open){snd('kachunk');sfx('KA-CHUNK!',70,14,'#ffd23a',1);a.ajar=true;ARSW.sw=0;snd('creak');await tween(ARSW,'sw',1,700);return say(PL,"Issue number one. Best lever I've ever pulled.");}
  if(!a.note)return say(PL,pick(["Not now, Willis. Focus. ...Okay, after we save Smudge.","There are hundreds of comics. I'm not yanking random ones off Rory's wall."]));
  await say(PL,"Issue number one. Top shelf, far left. It's sticking out a little...");
  snd('kachunk');st.shake=300;sfx('KA-CHUNK!',70,14,'#ffd23a',1);await wait(300);
- a.open=true;ARSW.sw=0;snd('creak');await tween(ARSW,'sw',1,900);
+ a.open=true;a.ajar=true;ARSW.sw=0;snd('creak');await tween(ARSW,'sw',1,900);
  if(!ARCG.found){ARCG.found=true;arcGSave();}
  await say(PL,"The comic wall is a DOOR.");
  if(V.room===st.room&&PL!==V)await say(V,"Okay. I'm filming everything in this building from now on.");
@@ -175,7 +176,7 @@ async function arcPush(g){
  if(PL===D)return dudeBump(g);
  await say(PL,"Nnngh. Nothing. Way too heavy.");
  if(st.act===2)return say(PL,"This needs a Dude-sized bump. And the Dude is in 1826.");
- if(D.room==='now.lounge'||D.room==='now.shop'){await say(PL,"Dude! Can you give this thing a bump?");if(D.room==='now.shop')await say(D,"On my way.");return dudeBump(g);}
+ if(D.room==='now.lounge'||D.room==='now.shop'||D.room==='y.shop'){await say(PL,"Dude! Can you give this thing a bump?");if(D.room!=='now.lounge')await say(D,"On my way.");return dudeBump(g);}
  return say(PL,"This needs a bump. A big, gentle, Dude-shaped bump.");}
 async function dudeBump(g){const c=CAB[g],cx=c.x+18,prev=D.room!=='now.lounge'?{room:D.room,x:D.x,y:D.y,dir:D.dir}:null;
  if(prev)place(D,30,124,1,'now.lounge');
@@ -197,7 +198,7 @@ function arcCabHot(g){const c=CAB[g];return{id:'cab_'+g,name:ARC_GAMES[g].t,rect
 
 async function fridgeOpen(){await say(PL,"One can of soda labeled RORY'S. DO NOT. A second can labeled ALSO RORY'S.");await stashToken('fridge',306,84,"And behind the sodas... a token. It's cold. Rory refrigerates his tokens.");}
 room('now.lounge',{bg:bgLounge,dyn:loungeDyn,music:'shop',walk:[44,300,108,138],hot:()=>[
- {id:'ldoor',name:'doorway',rect:[2,16,40,86],exit:'now.shop',arrive:{x:68,y:108,dir:1},walk:{x:46,y:116,dir:-1},on:{look:"The back of the comic wall. Back out to the shop."}},
+ {id:'ldoor',name:'doorway',rect:[2,16,40,86],exit:st.act===3?'y.shop':'now.shop',arrive:{x:68,y:108,dir:1},walk:{x:46,y:116,dir:-1},on:{look:"The back of the comic wall. Back out to the shop."}},
  arcCabHot('blitz'),arcCabHot('suds'),
  {id:'lsign',name:'neon sign',rect:[112,8,76,20],walk:{x:150,y:110,dir:-1},on:{look:"'EMPLOYEE LOUNGE. EMPLOYEES 1.' He paid for a neon sign about that."}},
  {id:'hiscore',name:'high scores',rect:[222,26,46,36],walk:{x:244,y:116,dir:-1},on:{look:"HIGH SCORES. R.T., R.T., R.T., R.T. He plays alone. Every night. I'm not sad, the screens are just bright.",pick:async()=>{if(!await stashToken('board',244,40,"Behind the score sheet, taped to the cork: a token. 'FOR EMERGENCIES. -R'"))await say(PL,"It's pinned to a cork board. Taking it would be cruel.");}}},
@@ -206,13 +207,23 @@ room('now.lounge',{bg:bgLounge,dyn:loungeDyn,music:'shop',walk:[44,300,108,138],
  {id:'fridge',name:'mini fridge',rect:[296,74,20,29],walk:{x:296,y:114,dir:1},on:{look:"A mini fridge with a sticky note: 'RORY'S.'",open:()=>fridgeOpen(),use:()=>fridgeOpen(),pick:"It's plugged in. And it's Rory's. It says so."}}]});
 ROOMS['now.lounge'].enter=()=>{const a=ARCS();if(a.seen)return;a.seen=true;setTimeout(()=>{if(busy||speech||st.mode!=='play'||st.room!=='now.lounge')return;busy=true;say(PL,"Rory has a secret ARCADE. Two cabinets, a couch, and a neon sign about himself.").then(()=>{busy=false;});},80);};
 
+/* Close on the open doorway swings the comic wall back into place (Pull issue #1 opens it again) */
+async function shutLounge(){const a=ARCS();if(!a.ajar)return;snd('creak');await tween(ARSW,'sw',0,700);a.ajar=false;ARSW.sw=0;snd('kachunk');sfx('KA-CHUNK!',70,14,'#ffd23a',1);}
+/* the secret door shuts itself: animated when you step back out of the lounge, already shut otherwise */
+{const _go=go;go=function(id,k){const prev=st.room;_go(id,k);if(id!=='now.shop'&&id!=='y.shop')return;const a=ARCS();if(!a.ajar)return;
+ if(prev!=='now.lounge'){a.ajar=false;ARSW.sw=0;return;}
+ ARSW.sw=1;setTimeout(()=>{if(st.room!==id||!a.ajar)return;snd('creak');tween(ARSW,'sw',0,800).then(()=>{if(!a.ajar)return;a.ajar=false;ARSW.sw=0;snd('kachunk');sfx('KA-CHUNK!',70,14,'#ffd23a',1);});},700);};}
 /* hook the lounge into the shop and the street */
-{const base=ROOMS['now.shop'].hot;ROOMS['now.shop'].hot=()=>{const a=ARCS(),l=(typeof base==='function'?base():base).filter(Boolean).map(h=>h.id==='racks'?{...h,on:{...h.on,
-   look:()=>say(PL,a.open?"The comic wall. Well. The comic DOOR.":a.note?"Hundreds of comics. Top shelf, far left: issue number one, sticking out a little.":(typeof h.on.look==='string'?h.on.look:"Hundreds of comics.")),pick:pullIssue,pull:pullIssue}}:h);
+for(const shopId of ['now.shop','y.shop']){const base=ROOMS[shopId].hot;ROOMS[shopId].hot=()=>{const a=ARCS(),l=(typeof base==='function'?base():base).filter(Boolean).map(h=>h.id==='racks'?{...h,on:{...h.on,
+   look:()=>say(PL,a.ajar?"The comic wall. Well. The comic DOOR.":a.note?"Hundreds of comics. Top shelf, far left: issue number one, sticking out a little.":(typeof h.on.look==='string'?h.on.look:"Hundreds of comics.")),
+   pick:async()=>{const lever=a.note||a.open;
+    /* the wall's own Pick up wins when it does something (Act 2+: the Big Book), unless the Blot has eaten Pull and you know the secret */
+    if(typeof h.on.pick==='function'&&!(lever&&st.inked.includes('pull')))return h.on.pick();
+    if(lever)return pullIssue();return h.on.pick?say(PL,h.on.pick):pullIssue();},pull:pullIssue}}:h);
  l.push({id:'sticky',name:'sticky note',rect:[165,83,11,10],walk:{x:168,y:108,dir:-1},on:{look:readSticky,pick:readSticky}});
- if(a.open)l.push({id:'lounge',name:'Employee Lounge',rect:[44,22,48,74],exit:'now.lounge',arrive:{x:52,y:118,dir:1},walk:{x:68,y:104,dir:-1},on:{look:"Rory's secret Employee Lounge. I can hear arcade cabinets humming in there."}});
+ if(a.ajar)l.push({id:'lounge',name:'Employee Lounge',rect:[44,22,48,74],exit:'now.lounge',arrive:{x:52,y:118,dir:1},walk:{x:68,y:104,dir:-1},on:{look:"Rory's secret Employee Lounge. I can hear arcade cabinets humming in there.",close:shutLounge}});
  return l;};}
-{const d0=ROOMS['now.shop'].dyn;ROOMS['now.shop'].dyn=()=>{d0();loungeDoorDyn();};}
+for(const shopId of ['now.shop','y.shop']){const d0=ROOMS[shopId].dyn;ROOMS[shopId].dyn=()=>{d0();loungeDoorDyn();};}
 {const base=ROOMS['now.street'].hot;ROOMS['now.street'].hot=()=>base().map(h=>h.id!=='newsbox'?h:{...h,on:{...h.on,
   look:()=>say(PL,"Tonight's headline: 'LOCAL PRINT SHOP STILL OPEN 24 HOURS.' Slow news day."+(ARCS().tok?"":" The coin return flap is stuck open. Something's wedged in there.")),
   pick:newsReturn,use:newsReturn,pull:newsReturn,push:newsReturn}});}

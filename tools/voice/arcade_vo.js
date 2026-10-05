@@ -31,6 +31,9 @@ for(const {t,i} of all){
 const [bz,sd]=CAB_LOOK.filter(t=>/^SMUDGE/.test(t)),fr=CAB_LOOK.find(t=>/FREE PLAY/.test(t)),cr=CAB_LOOK.find(t=>/CREDIT 1/.test(t)),co=CAB_LOOK.find(t=>/INSERT COIN/.test(t)),dn=CAB_LOOK.find(t=>/dent/.test(t));
 for(const b of [bz,sd])for(const t of [b+fr,b+cr,b+co,b+co+dn])add(P3,t); // one token only, so CREDIT 1 never meets the dent
 add(P3,NEWS_LOOK[0]+NEWS_LOOK[1]);add(P3,NEWS_LOOK[0]);
+/* other patch files with plain dialogue: every double-quoted literal is a line; say(D,...) is the Dude, the rest is the player */
+for(const fn of ['act3fill.js']){const s2=fs.readFileSync(path.join(ROOT,'tools','patches',fn),'utf8');
+ for(const m of s2.matchAll(/"((?:[^"\\]|\\.)*)"/g)){const t=JSON.parse(m[0]);if(t.length<3||!/[a-z]/i.test(t))continue;add(/say\(D,\s*$/.test(s2.slice(Math.max(0,m.index-12),m.index))?'dude':P3,t);}}
 /* story fixes outside the lounge code (tools/voice/extra_lines.json: [{spk,text}]) */
 const XF=path.join(__dirname,'extra_lines.json');if(fs.existsSync(XF))for(const o of JSON.parse(fs.readFileSync(XF,'utf8')))add(o.spk,o.text);
 /* skip lines the game already has */
